@@ -1,4 +1,3 @@
-import { LanguageService } from 'typescript';
 import { JsonSchemaForNpmPackageJsonFiles as PackageJson } from './package.json';
 import { JsonSchemaForTheTypeScriptCompilersConfigurationFile as TsconfigJson } from './tsconfig.json';
 import { JsonSchemaForTheTsLintConfigurationFiles as TslintJson } from './tslint.json';
@@ -50,8 +49,4 @@ export const enum ProjectFileType {
 	JSON,
 	XML,
 	PlainText
-}
-
-export interface TypeScriptWorker {
-	(uri: monaco.Uri): Promise<LanguageService>;
 }
