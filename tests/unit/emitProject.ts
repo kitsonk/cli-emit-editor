@@ -125,12 +125,14 @@ registerSuite({
 		accessMap = {};
 		readFileMap = {
 			'package.json': JSON.stringify({ name: 'test-package' }),
-			'tsconfig.json': JSON.stringify({ compilerOptions: { } }),
+			'tsconfig.json': JSON.stringify({ compilerOptions: { }, include: [ 'src/**/*.ts' ] }),
 			'node_modules/@dojo/loader/dojo-loader-2.0.0.d.ts': 'loader',
 			'node_modules/@dojo/core/lang.d.ts': 'lang',
 			'node_modules/@types/chai/assert.d.ts': 'assert'
 		};
-		globMap = {};
+		globMap = {
+			'src/**/*.{ts,html,css,json,xml,md}': [ 'src/index.html' ]
+		};
 		resolveMap = {};
 	},
 
@@ -154,9 +156,10 @@ registerSuite({
 		assert.strictEqual(writeFileStub.lastCall.args[0], 'test-package.project.json', 'should have written expected filename');
 		assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
 			environmentFiles: [],
-			files: [],
+			files: [ { name: 'src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: 'src/index.html',
 			package: { name: 'test-package' },
-			tsconfig: { compilerOptions: {} }
+			tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
 		}, 'should have written expected contents');
 		assert.isTrue(accessMap['package.json'], 'should have checked to see if package.json exists');
 		assert.isTrue(accessMap['tsconfig.json'], 'should have checked to see if package.json exists');
@@ -166,7 +169,8 @@ registerSuite({
 		readFileMap['tsconfig.json'] = JSON.stringify({
 			compilerOptions: {
 				lib: [ 'foo', 'bar' ]
-			}
+			},
+			include: [ 'src/**/*.ts' ]
 		});
 		readFileMap['node_modules/typescript/lib/lib.foo.d.ts'] = 'foo';
 		readFileMap['node_modules/typescript/lib/lib.bar.d.ts'] = 'bar';
@@ -176,11 +180,15 @@ registerSuite({
 				{ name: 'lib.foo.d.ts', text: 'foo', type: ProjectFileType.Lib },
 				{ name: 'lib.bar.d.ts', text: 'bar', type: ProjectFileType.Lib }
 			],
-			files: [],
+			files: [ { name: 'src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: 'src/index.html',
 			package: { name: 'test-package' },
-			tsconfig: { compilerOptions: {
-				lib: [ 'foo', 'bar' ]
-			}}
+			tsconfig: {
+				compilerOptions: {
+					lib: [ 'foo', 'bar' ]
+				},
+				include: [ 'src/**/*.ts' ]
+			}
 		}, 'should have written expected contents');
 	},
 
@@ -188,7 +196,8 @@ registerSuite({
 		readFileMap['tsconfig.json'] = JSON.stringify({
 			compilerOptions: {
 				types: [ 'foo', 'bar', 'baz' ]
-			}
+			},
+			include: [ 'src/**/*.ts' ]
 		});
 		await emitProject(emitArgs);
 		assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged a warning');
@@ -202,12 +211,14 @@ registerSuite({
 				{ name: 'node_modules/bar/bar.d.ts', text: '', type: ProjectFileType.Definition },
 				{ name: 'node_modules/baz/index.d.ts', text: '', type: ProjectFileType.Definition }
 			],
-			files: [],
+			files: [ { name: 'src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: 'src/index.html',
 			package: { name: 'test-package' },
 			tsconfig: {
 				compilerOptions: {
 					types: [ 'foo', 'bar', 'baz' ]
-				}
+				},
+				include: [ 'src/**/*.ts' ]
 			}
 		}, 'should have written expected contents');
 	},
@@ -227,9 +238,10 @@ registerSuite({
 				{ name: 'node_modules/@dojo/core/lang.d.ts', text: 'lang', type: ProjectFileType.Definition },
 				{ name: 'node_modules/@types/chai/assert.d.ts', text: 'assert', type: ProjectFileType.Definition }
 			],
-			files: [],
+			files: [ { name: 'src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: 'src/index.html',
 			package: { name: 'test-package' },
-			tsconfig: { compilerOptions: {} }
+			tsconfig: { compilerOptions: {}, include: [ 'src/**/*.ts' ] }
 		}, 'should have written expected contents');
 	},
 
@@ -262,6 +274,7 @@ registerSuite({
 				{ name: 'src/interfaces.d.ts', text: '', type: ProjectFileType.Definition },
 				{ name: 'src/text.txt', text: '', type: ProjectFileType.PlainText }
 			],
+			index: 'src/index.html',
 			package: { name: 'test-package' },
 			tsconfig: {
 				compilerOptions: {},
@@ -285,6 +298,35 @@ registerSuite({
 	},
 
 	'emit arguments': {
+		async 'index'() {
+			globMap['src/**/*.{ts,html}'] = [
+				'src/index.ts',
+				'src/foo.html'
+			];
+			readFileMap['tsconfig.json'] = JSON.stringify({
+				compilerOptions: { },
+				include: [ 'src/**/*.ts' ]
+			});
+			emitArgs.content = 'ts,html';
+
+			emitArgs.index = 'src/foo.html';
+			await emitProject(emitArgs);
+			assert.strictEqual(consoleLogStub.callCount, 2, 'should have only logged twice to console');
+			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				environmentFiles: [],
+				files: [
+					{ name: 'src/index.ts', text: '', type: ProjectFileType.TypeScript },
+					{ name: 'src/foo.html', text: '', type: ProjectFileType.HTML }
+				],
+				index: 'src/foo.html',
+				package: { name: 'test-package' },
+				tsconfig: {
+					compilerOptions: {},
+					include: [ 'src/**/*.ts' ]
+				}
+			}, 'should have written expected contents');
+		},
+
 		async 'out'() {
 			emitArgs.out = 'dev';
 			await emitProject(emitArgs);
@@ -317,6 +359,7 @@ registerSuite({
 					{ name: 'src/index.ts', text: '', type: ProjectFileType.TypeScript },
 					{ name: 'src/index.html', text: '', type: ProjectFileType.HTML }
 				],
+				index: 'src/index.html',
 				package: { name: 'test-package' },
 				tsconfig: {
 					compilerOptions: {},
@@ -329,7 +372,7 @@ registerSuite({
 			async 'standard args'() {
 				emitArgs.verbose = true;
 				await emitProject(emitArgs);
-				assert.strictEqual(consoleLogStub.callCount, 4, 'should have logged propertly to console');
+				assert.strictEqual(consoleLogStub.callCount, 5, 'should have logged propertly to console');
 			}
 		}
 	},
@@ -370,14 +413,18 @@ registerSuite({
 
 		async 'error with glob'() {
 			globMap['src/**/*.{ts,html}'] = [ 'err' ];
-			readFileMap['tsconfig.json'] = JSON.stringify({
-				compilerOptions: { },
-				include: [ 'src/**/*.ts' ]
-			});
 			emitArgs.content = 'ts,html';
 			await emitProject(emitArgs);
 			assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged properly to the console');
 			assert.include(consoleLogStub.getCall(1).args[0], 'Error: glob error');
+		},
+
+		async 'error not resolving project index'() {
+			globMap['src/**/*.{ts,html}'] = [ 'src/index.ts' ];
+			emitArgs.content = 'ts,html';
+			await emitProject(emitArgs);
+			assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged properly to the console');
+			assert.include(consoleLogStub.getCall(1).args[0], 'unable to find index "src/index.html" in project.');
 		}
 	}
 });

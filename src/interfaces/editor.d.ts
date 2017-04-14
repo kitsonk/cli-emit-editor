@@ -17,6 +17,11 @@ export interface ProjectBundle {
 	files: ProjectFile[];
 
 	/**
+	 * The filename of the HTML document for the project to load when running it
+	 */
+	index: string;
+
+	/**
 	 * The package.json for the project
 	 */
 	package: PackageJson;

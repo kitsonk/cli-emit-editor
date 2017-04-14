@@ -108,6 +108,7 @@ async function createProject() {
 	const project: ProjectBundle = {
 		environmentFiles: [],
 		files: [],
+		index: '',
 		package: {},
 		tsconfig: {}
 	};
@@ -180,7 +181,7 @@ async function addProjectFiles(project: ProjectBundle, includeExtensions: string
 	if (project.tsconfig.include) {
 		const globs = await Promise.all(project.tsconfig.include
 			.map((pattern) => getGlob(pattern.replace(/(\.d)?\.ts$/, `.{${includeExtensions}}`))));
-		const files = globs.reduce((previous, current) => previous.concat(current), <string[]> []);
+		const files = (<string[]> []).concat(...globs);
 		const tasks = files.map(async (name) => {
 			const text = await getFile(name);
 			log('  ' + bold.blue('adding') + ` project file "${name}"`, true);
@@ -243,10 +244,19 @@ async function addDefinitionFiles(project: ProjectBundle) {
 	return Promise.all(tasks);
 }
 
+function setProjectIndex(project: ProjectBundle, index = 'src/index.html') {
+	if (!project.files.find(({ name }) => name === index)) {
+		log('  ' + bold.red('error') + ` unable to find index "${index}" in project.`);
+	}
+	else {
+		project.index = index;
+	}
+}
+
 /**
  * An async function which resolves when a project bundle has been output for the specified path
  */
-export default async function emitProject({ content, out, project: root, verbose }: EmitArgs) {
+export default async function emitProject({ content, index, out, project: root, verbose }: EmitArgs) {
 	verboseFlag = verbose;
 
 	log(underline('\nEmit editor project bundle'));
@@ -268,6 +278,8 @@ export default async function emitProject({ content, out, project: root, verbose
 		}
 		tasks.push(addProjectFiles(project, content));
 		await Promise.all(tasks);
+
+		setProjectIndex(project, index);
 
 		/* write out project bundle file */
 		const outfilename = `${(project.package.name || 'bundle').replace(/[\/\\]/, '-')}.project.json`;

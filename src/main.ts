@@ -7,6 +7,7 @@ const pkgDir = require('pkg-dir');
 export interface EmitArgs extends Argv {
 	content: string | undefined;
 	out: string;
+	index: string | undefined;
 	project: string;
 	verbose: boolean;
 }
@@ -32,6 +33,11 @@ const command: Command = {
 			alias: 'content',
 			describe: 'A comma seperated list of extentions of files to include in the project files.  Defaults to "ts,html,css,json,xml,md".',
 			type: 'string'
+		});
+
+		options('i', {
+			alias: 'index',
+			describe: 'A file path to the main HTML document to load when running the project.  Defaults to "src/index.html".'
 		});
 
 		options('o', {

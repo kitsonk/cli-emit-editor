@@ -36,6 +36,7 @@ describe('main', () => {
 
 		let untestedArguments: { [key: string]: string } = {
 			'c': 'content',
+			'i': 'index',
 			'o': 'out',
 			'p': 'project',
 			'v': 'verbose'
