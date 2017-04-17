@@ -30,8 +30,7 @@ registerSuite({
 
 	setup() {
 		mockery.enable({
-			warnOnUnregistered: false,
-			warnOnReplace: false
+			warnOnUnregistered: false
 		});
 
 		accessStub = stub(fs, 'access', (name: string, constants: any, callback: (err?: any) => void) => {
@@ -80,13 +79,6 @@ registerSuite({
 		});
 
 		mockery.registerMock('glob', globStub);
-		mockery.registerMock('foo/package.json', {
-			types: 'foo.d.ts'
-		});
-		mockery.registerMock('bar/package.json', {
-			typings: 'bar.d.ts'
-		});
-		mockery.registerMock('baz/package.json', {});
 
 		const emitProjectModule = require('intern/dojo/node!./../../src/emitProject');
 
@@ -129,7 +121,10 @@ registerSuite({
 			'tsconfig.json': JSON.stringify({ compilerOptions: { }, include: [ 'src/**/*.ts' ] }),
 			'node_modules/@dojo/loader/dojo-loader-2.0.0.d.ts': 'loader',
 			'node_modules/@dojo/core/lang.d.ts': 'lang',
-			'node_modules/@types/chai/assert.d.ts': 'assert'
+			'node_modules/@types/chai/assert.d.ts': 'assert',
+			'node_modules/foo/package.json': JSON.stringify({ types: 'foo.d.ts' }),
+			'node_modules/bar/package.json': JSON.stringify({ typings: 'bar.d.ts' }),
+			'node_modules/baz/package.json': JSON.stringify({ })
 		};
 		globMap = {
 			'src/**/*.{ts,html,css,json,xml,md}': [ './src/index.html' ]
@@ -291,27 +286,28 @@ registerSuite({
 
 	'resolves package dependencies': {
 		async 'no additional dependencies'() {
-			mockery.registerMock('dep1/package.json', {
-				dependencies: {}
-			});
-			mockery.registerMock('dep2/package.json', {
-				dependencies: {}
-			});
-			mockery.registerMock('dep3/package.json', {
-				dependencies: {}
-			});
-
-			readFileMap['package.json'] = JSON.stringify({
-				name: 'test-package',
-				dependencies: {
-					'dep1': '1.0.0'
-				},
-				peerDependencies: {
-					'dep2': '2.0.0'
-				},
-				devDependencies: {
-					'dep3': '0.1.0'
-				}
+			Object.assign(readFileMap, {
+				'/var/projects/test-project/node_modules/dep1/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'/var/projects/test-project/node_modules/dep2/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'/var/projects/test-project/node_modules/dep3/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'package.json': JSON.stringify({
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					},
+					peerDependencies: {
+						'dep2': '2.0.0'
+					},
+					devDependencies: {
+						'dep3': '0.1.0'
+					}
+				})
 			});
 
 			await emitProject(emitArgs);
@@ -343,37 +339,39 @@ registerSuite({
 		},
 
 		async 'should ignore dev dependencies on deeper packages'() {
-			mockery.registerMock('dep1/package.json', {
-				dependencies: {
-					'dep4': 'next'
-				},
-				devDependencies: {
-					'dep5': '2.0.0'
-				}
-			});
-			mockery.registerMock('dep2/package.json', {
-				dependencies: {}
-			});
-			mockery.registerMock('dep3/package.json', {
-				dependencies: {}
-			});
-			mockery.registerMock('dep4/package.json', {
-				dependencies: {}
-			});
-			mockery.registerMock('dep5/package.json', {
-				dependencies: {}
-			});
-			readFileMap['package.json'] = JSON.stringify({
-				name: 'test-package',
-				dependencies: {
-					'dep1': '1.0.0'
-				},
-				peerDependencies: {
-					'dep2': '2.0.0'
-				},
-				devDependencies: {
-					'dep3': '0.1.0'
-				}
+			Object.assign(readFileMap, {
+				'/var/projects/test-project/node_modules/dep1/package.json': JSON.stringify({
+					dependencies: {
+						'dep4': 'next'
+					},
+					devDependencies: {
+						'dep5': '2.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep2/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'/var/projects/test-project/node_modules/dep3/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'/var/projects/test-project/node_modules/dep4/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'/var/projects/test-project/node_modules/dep5/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'package.json': JSON.stringify({
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					},
+					peerDependencies: {
+						'dep2': '2.0.0'
+					},
+					devDependencies: {
+						'dep3': '0.1.0'
+					}
+				})
 			});
 
 			await emitProject(emitArgs);
@@ -409,37 +407,39 @@ registerSuite({
 		},
 
 		async 'no package.json for dependency'() {
-			mockery.registerMock('dep1/package.json', {
-				dependencies: {
-					'dep6': 'next'
-				},
-				devDependencies: {
-					'dep5': '2.0.0'
-				}
-			});
-			mockery.registerMock('dep2/package.json', {
-				dependencies: {}
-			});
-			mockery.registerMock('dep3/package.json', {
-				dependencies: {}
-			});
-			mockery.registerMock('dep4/package.json', {
-				dependencies: {}
-			});
-			mockery.registerMock('dep5/package.json', {
-				dependencies: {}
-			});
-			readFileMap['package.json'] = JSON.stringify({
-				name: 'test-package',
-				dependencies: {
-					'dep1': '1.0.0'
-				},
-				peerDependencies: {
-					'dep2': '2.0.0'
-				},
-				devDependencies: {
-					'dep3': '0.1.0'
-				}
+			Object.assign(readFileMap, {
+				'/var/projects/test-project/node_modules/dep1/package.json': JSON.stringify({
+					dependencies: {
+						'dep6': 'next'
+					},
+					devDependencies: {
+						'dep5': '2.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep2/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'/var/projects/test-project/node_modules/dep3/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'/var/projects/test-project/node_modules/dep4/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'/var/projects/test-project/node_modules/dep5/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'package.json': JSON.stringify({
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					},
+					peerDependencies: {
+						'dep2': '2.0.0'
+					},
+					devDependencies: {
+						'dep3': '0.1.0'
+					}
+				})
 			});
 
 			await emitProject(emitArgs);
@@ -475,35 +475,37 @@ registerSuite({
 		},
 
 		async 'dual dependencies, first one wins'() {
-			mockery.registerMock('dep1/package.json', {
-				dependencies: {
-					'dep4': '1.0.0'
-				}
-			});
-			mockery.registerMock('dep2/package.json', {
-				dependencies: {
-					'dep4': '1.0.1'
-				}
-			});
-			mockery.registerMock('dep3/package.json', {
-				dependencies: {
-					'dep4': '2.0.0'
-				}
-			});
-			mockery.registerMock('dep4/package.json', {
-				dependencies: {}
-			});
-			readFileMap['package.json'] = JSON.stringify({
-				name: 'test-package',
-				dependencies: {
-					'dep1': '1.0.0'
-				},
-				peerDependencies: {
-					'dep2': '2.0.0'
-				},
-				devDependencies: {
-					'dep3': '0.1.0'
-				}
+			Object.assign(readFileMap, {
+				'/var/projects/test-project/node_modules/dep1/package.json': JSON.stringify({
+					dependencies: {
+						'dep4': '1.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep2/package.json': JSON.stringify({
+					dependencies: {
+						'dep4': '1.0.1'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep3/package.json': JSON.stringify({
+					dependencies: {
+						'dep4': '2.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep4/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'package.json': JSON.stringify({
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					},
+					peerDependencies: {
+						'dep2': '2.0.0'
+					},
+					devDependencies: {
+						'dep3': '0.1.0'
+					}
+				})
 			});
 
 			await emitProject(emitArgs);
@@ -540,32 +542,34 @@ registerSuite({
 		},
 
 		async 'deep dependencies with duplicates'() {
-			mockery.registerMock('dep1/package.json', {
-				dependencies: {
-					'dep2': '1.0.0',
-					'dep3': '2.0.0',
-					'dep4': '1.0.0'
-				}
-			});
-			mockery.registerMock('dep2/package.json', {
-				dependencies: {
-					'dep3': '1.0.0',
-					'dep4': '1.0.0'
-				}
-			});
-			mockery.registerMock('dep3/package.json', {
-				dependencies: {
-					'dep4': '2.0.0'
-				}
-			});
-			mockery.registerMock('dep4/package.json', {
-				dependencies: {}
-			});
-			readFileMap['package.json'] = JSON.stringify({
-				name: 'test-package',
-				dependencies: {
-					'dep1': '1.0.0'
-				}
+			Object.assign(readFileMap, {
+				'/var/projects/test-project/node_modules/dep1/package.json': JSON.stringify({
+					dependencies: {
+						'dep2': '1.0.0',
+						'dep3': '2.0.0',
+						'dep4': '1.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep2/package.json': JSON.stringify({
+					dependencies: {
+						'dep3': '1.0.0',
+						'dep4': '1.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep3/package.json': JSON.stringify({
+					dependencies: {
+						'dep4': '2.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep4/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'package.json': JSON.stringify({
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					}
+				})
 			});
 
 			await emitProject(emitArgs);
@@ -594,36 +598,38 @@ registerSuite({
 		},
 
 		async 'sub peer dependencies'() {
-			mockery.registerMock('dep1/package.json', {
-				dependencies: {
-					'dep2': '1.0.0',
-					'dep4': '1.0.0'
-				},
-				peerDependencies: {
-					'dep3': '2.0.0'
-				}
-			});
-			mockery.registerMock('dep2/package.json', {
-				dependencies: {
-					'dep3': '1.0.0'
-				},
-				peerDependencies: {
-					'dep4': '1.0.0'
-				}
-			});
-			mockery.registerMock('dep3/package.json', {
-				dependencies: {
-					'dep4': '2.0.0'
-				}
-			});
-			mockery.registerMock('dep4/package.json', {
-				dependencies: {}
-			});
-			readFileMap['package.json'] = JSON.stringify({
-				name: 'test-package',
-				dependencies: {
-					'dep1': '1.0.0'
-				}
+			Object.assign(readFileMap, {
+				'/var/projects/test-project/node_modules/dep1/package.json': JSON.stringify({
+					dependencies: {
+						'dep2': '1.0.0',
+						'dep4': '1.0.0'
+					},
+					peerDependencies: {
+						'dep3': '2.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep2/package.json': JSON.stringify({
+					dependencies: {
+						'dep3': '1.0.0'
+					},
+					peerDependencies: {
+						'dep4': '1.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep3/package.json': JSON.stringify({
+					dependencies: {
+						'dep4': '2.0.0'
+					}
+				}),
+				'/var/projects/test-project/node_modules/dep4/package.json': JSON.stringify({
+					dependencies: {}
+				}),
+				'package.json': JSON.stringify({
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					}
+				})
 			});
 
 			await emitProject(emitArgs);
@@ -743,7 +749,7 @@ registerSuite({
 			async 'standard args'() {
 				emitArgs.verbose = true;
 				await emitProject(emitArgs);
-				assert.strictEqual(consoleLogStub.callCount, 5, 'should have logged propertly to console');
+				assert.strictEqual(consoleLogStub.callCount, 7, 'should have logged propertly to console');
 			}
 		}
 	},

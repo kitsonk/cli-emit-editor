@@ -3,6 +3,7 @@ import { access, constants, readFile, writeFile } from 'fs';
 import * as glob from 'glob';
 import { extname, join, normalize, relative } from 'path';
 import { chdir, cwd } from 'process';
+import * as resolveCwd from 'resolve-cwd';
 
 import { EmitArgs } from './main';
 import { ProjectBundle, ProjectFileType, ProjectFile } from './interfaces/editor';
@@ -14,7 +15,7 @@ import { JsonSchemaForNpmPackageJsonFiles as PackageJson } from './interfaces/pa
  */
 const DOJO_EXCLUDE = /@dojo\/loader\/interfaces\.d\.ts$/;
 
-export let requireResolve = require.resolve;
+export let requireResolve = resolveCwd;
 
 let verboseFlag = false;
 
@@ -179,46 +180,53 @@ function getProjectFileType(name: string): ProjectFileType {
  * Populates the `project.dependencies` with the recursively resolved dependencies for the package
  * @param project The project bundle to populate
  */
-function addDependencies(project: ProjectBundle) {
+async function addDependencies(project: ProjectBundle) {
 
 	const packageSet = new Set();
 
-	function getDependencies (packages: { [pkg: string]: string; }): { [pkg: string]: string; } {
+	async function getDependencies (packages: { [pkg: string]: string; }): Promise<{ [pkg: string]: string; }> {
 		const dependencies: { [pkg: string]: string; } = {};
 		for (const packageName in packages) {
 			if (!packageSet.has(packageName)) {
 				packageSet.add(packageName);
-				log('  ' + bold.blue('resolving') + ` dependencies for package "${packageName}"`, true);
+				log('    ' + bold.blue('resolving') + ` dependencies for package "${packageName}"`, true);
 				let packageJson: PackageJson;
 				try {
-					packageJson = require(join(packageName, 'package.json'));
+					const packageJsonFileName = requireResolve(join(packageName, 'package.json'));
+					packageJson = JSON.parse(await getFile(packageJsonFileName));
 				}
 				catch (e) {
+					log('    ' + bold.yellow('missing') + ` "${join(packageName, 'package.json')}"`, true);
 					continue;
 				}
 				Object.assign(dependencies, packageJson.peerDependencies);
 				Object.assign(dependencies, packageJson.dependencies);
-				if (packageJson.peerDependencies && Object.keys(packageJson.peerDependencies).length) {
-					log('    ' + bold.blue('depends') + ` on peer packages "${Object.keys(packageJson.peerDependencies).join('", "')}"`, true);
-				}
 				if (packageJson.dependencies && Object.keys(packageJson.dependencies).length) {
-					log('    ' + bold.blue('depends') + ` on peer packages "${Object.keys(packageJson.dependencies).join('", "')}"`, true);
+					log('      ' + bold.blue('depends') + ` on packages "${Object.keys(packageJson.dependencies).join('", "')}"`, true);
 				}
+				if (packageJson.peerDependencies && Object.keys(packageJson.peerDependencies).length) {
+					log('      ' + bold.blue('depends') + ` on peer packages "${Object.keys(packageJson.peerDependencies).join('", "')}"`, true);
+				}
+			}
+			else {
+				log('    ' + bold.blue('skipping') + ` dependencies for package "${packageName}", already seen`, true);
 			}
 		}
 		if (Object.keys(dependencies).length) {
-			Object.assign(dependencies, getDependencies(dependencies));
+			Object.assign(dependencies, await getDependencies(dependencies));
 		}
 		return dependencies;
 	}
 
+	log('  ' + bold.blue('resolving') + ` production dependecies:`, true);
 	Object.assign(project.dependencies.production, project.package.peerDependencies);
 	Object.assign(project.dependencies.production, project.package.dependencies);
-	Object.assign(project.dependencies.production, getDependencies(project.dependencies.production));
+	Object.assign(project.dependencies.production, await getDependencies(project.dependencies.production));
 
+	log('  ' + bold.blue('resolving') + ` development dependecies:`, true);
 	packageSet.clear();
 	Object.assign(project.dependencies.development, project.package.devDependencies);
-	Object.assign(project.dependencies.development, getDependencies(project.dependencies.development));
+	Object.assign(project.dependencies.development, await getDependencies(project.dependencies.development));
 }
 
 /**
@@ -254,8 +262,8 @@ async function addTypesFiles(project: ProjectBundle) {
 	if (project.tsconfig.compilerOptions && project.tsconfig.compilerOptions.types) {
 		const tasks = project.tsconfig.compilerOptions.types.map(async (packageName) => {
 			log('  ' + bold.blue('resolving') + ` types for package "${packageName}"`, true);
-			const packageJson: PackageJson = require(join(packageName, 'package.json'));
 			const packageJsonFilename = relative(cwd(), requireResolve(join(packageName, 'package.json')));
+			const packageJson: PackageJson = JSON.parse(await getFile(packageJsonFilename));
 			project.environmentFiles.push(createProjectFile(packageJsonFilename, JSON.stringify(packageJson), ProjectFileType.JSON));
 			if (packageJson.typings || packageJson.types) {
 				const filename = relative(cwd(), requireResolve(normalize(join(packageName, (packageJson.typings || packageJson.types)!))));
@@ -332,9 +340,9 @@ export default async function emitProject({ content, index, out, project: root, 
 			log('  ' + bold.blue('setting') + ` project file extensions to "${content}"`, true);
 		}
 		tasks.push(addProjectFiles(project, content));
+		tasks.push(addDependencies(project));
 		await Promise.all(tasks);
 
-		addDependencies(project);
 		setProjectIndex(project, index);
 
 		/* write out project bundle file */
