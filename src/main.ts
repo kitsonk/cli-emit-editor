@@ -37,7 +37,7 @@ const command: Command = {
 
 		options('i', {
 			alias: 'index',
-			describe: 'A file path to the main HTML document to load when running the project.  Defaults to "src/index.html".'
+			describe: 'A file path to the main HTML document to load when running the project.  Defaults to "./src/index.html".'
 		});
 
 		options('o', {

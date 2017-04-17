@@ -30,7 +30,8 @@ registerSuite({
 
 	setup() {
 		mockery.enable({
-			warnOnUnregistered: false
+			warnOnUnregistered: false,
+			warnOnReplace: false
 		});
 
 		accessStub = stub(fs, 'access', (name: string, constants: any, callback: (err?: any) => void) => {
@@ -89,7 +90,7 @@ registerSuite({
 
 		const emitProjectModule = require('intern/dojo/node!./../../src/emitProject');
 
-		resolveStub = stub(emitProjectModule, 'resolve', (mid: string) => {
+		resolveStub = stub(emitProjectModule, 'requireResolve', (mid: string) => {
 			return resolveMap[mid] = resolveMap[mid] || '/var/projects/test-project/node_modules/' + mid;
 		});
 
@@ -131,7 +132,7 @@ registerSuite({
 			'node_modules/@types/chai/assert.d.ts': 'assert'
 		};
 		globMap = {
-			'src/**/*.{ts,html,css,json,xml,md}': [ 'src/index.html' ]
+			'src/**/*.{ts,html,css,json,xml,md}': [ './src/index.html' ]
 		};
 		resolveMap = {};
 	},
@@ -155,9 +156,10 @@ registerSuite({
 		assert.strictEqual(writeFileStub.callCount, 1, 'project should have been written');
 		assert.strictEqual(writeFileStub.lastCall.args[0], 'test-package.project.json', 'should have written expected filename');
 		assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+			dependencies: { development: {}, production: {} },
 			environmentFiles: [],
-			files: [ { name: 'src/index.html', text: '', type: ProjectFileType.HTML } ],
-			index: 'src/index.html',
+			files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: './src/index.html',
 			package: { name: 'test-package' },
 			tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
 		}, 'should have written expected contents');
@@ -176,12 +178,13 @@ registerSuite({
 		readFileMap['node_modules/typescript/lib/lib.bar.d.ts'] = 'bar';
 		await emitProject(emitArgs);
 		assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+			dependencies: { development: {}, production: {} },
 			environmentFiles: [
 				{ name: 'lib.foo.d.ts', text: 'foo', type: ProjectFileType.Lib },
 				{ name: 'lib.bar.d.ts', text: 'bar', type: ProjectFileType.Lib }
 			],
-			files: [ { name: 'src/index.html', text: '', type: ProjectFileType.HTML } ],
-			index: 'src/index.html',
+			files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: './src/index.html',
 			package: { name: 'test-package' },
 			tsconfig: {
 				compilerOptions: {
@@ -203,6 +206,7 @@ registerSuite({
 		assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged a warning');
 		assert.include(consoleLogStub.getCall(1).args[0], '"node_modules/baz/package.json" does not contain type information', 'warning should include proper info');
 		assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+			dependencies: { development: {}, production: {} },
 			environmentFiles: [
 				{ name: 'node_modules/foo/package.json', text: '{"types":"foo.d.ts"}', type: ProjectFileType.JSON },
 				{ name: 'node_modules/bar/package.json', text: '{"typings":"bar.d.ts"}', type: ProjectFileType.JSON },
@@ -211,8 +215,8 @@ registerSuite({
 				{ name: 'node_modules/bar/bar.d.ts', text: '', type: ProjectFileType.Definition },
 				{ name: 'node_modules/baz/index.d.ts', text: '', type: ProjectFileType.Definition }
 			],
-			files: [ { name: 'src/index.html', text: '', type: ProjectFileType.HTML } ],
-			index: 'src/index.html',
+			files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: './src/index.html',
 			package: { name: 'test-package' },
 			tsconfig: {
 				compilerOptions: {
@@ -233,13 +237,14 @@ registerSuite({
 		await emitProject(emitArgs);
 		assert.strictEqual(consoleLogStub.callCount, 2, 'should have only logged twice to console');
 		assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+			dependencies: { development: {}, production: {} },
 			environmentFiles: [
 				{ name: 'node_modules/@dojo/loader/dojo-loader-2.0.0.d.ts', text: 'loader', type: ProjectFileType.Definition },
 				{ name: 'node_modules/@dojo/core/lang.d.ts', text: 'lang', type: ProjectFileType.Definition },
 				{ name: 'node_modules/@types/chai/assert.d.ts', text: 'assert', type: ProjectFileType.Definition }
 			],
-			files: [ { name: 'src/index.html', text: '', type: ProjectFileType.HTML } ],
-			index: 'src/index.html',
+			files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: './src/index.html',
 			package: { name: 'test-package' },
 			tsconfig: { compilerOptions: {}, include: [ 'src/**/*.ts' ] }
 		}, 'should have written expected contents');
@@ -248,7 +253,7 @@ registerSuite({
 	async 'adds project files based on tsconfig.json'() {
 		globMap['src/**/*.{ts,html,css,json,xml,md}'] = [
 			'src/index.ts',
-			'src/index.html',
+			'./src/index.html',
 			'src/core.css',
 			'src/config/config.json',
 			'src/config/build.xml',
@@ -263,10 +268,11 @@ registerSuite({
 		await emitProject(emitArgs);
 		assert.strictEqual(consoleLogStub.callCount, 2, 'should have only logged twice to console');
 		assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+			dependencies: { development: {}, production: {} },
 			environmentFiles: [],
 			files: [
 				{ name: 'src/index.ts', text: '', type: ProjectFileType.TypeScript },
-				{ name: 'src/index.html', text: '', type: ProjectFileType.HTML },
+				{ name: './src/index.html', text: '', type: ProjectFileType.HTML },
 				{ name: 'src/core.css', text: '', type: ProjectFileType.CSS },
 				{ name: 'src/config/config.json', text: '', type: ProjectFileType.JSON },
 				{ name: 'src/config/build.xml', text: '', type: ProjectFileType.XML },
@@ -274,13 +280,376 @@ registerSuite({
 				{ name: 'src/interfaces.d.ts', text: '', type: ProjectFileType.Definition },
 				{ name: 'src/text.txt', text: '', type: ProjectFileType.PlainText }
 			],
-			index: 'src/index.html',
+			index: './src/index.html',
 			package: { name: 'test-package' },
 			tsconfig: {
 				compilerOptions: {},
 				include: [ 'src/**/*.ts' ]
 			}
 		}, 'should have written expected contents');
+	},
+
+	'resolves package dependencies': {
+		async 'no additional dependencies'() {
+			mockery.registerMock('dep1/package.json', {
+				dependencies: {}
+			});
+			mockery.registerMock('dep2/package.json', {
+				dependencies: {}
+			});
+			mockery.registerMock('dep3/package.json', {
+				dependencies: {}
+			});
+
+			readFileMap['package.json'] = JSON.stringify({
+				name: 'test-package',
+				dependencies: {
+					'dep1': '1.0.0'
+				},
+				peerDependencies: {
+					'dep2': '2.0.0'
+				},
+				devDependencies: {
+					'dep3': '0.1.0'
+				}
+			});
+
+			await emitProject(emitArgs);
+			assert.strictEqual(consoleLogStub.callCount, 2);
+			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				dependencies: { development: {
+					'dep3': '0.1.0'
+				}, production: {
+					'dep1': '1.0.0',
+					'dep2': '2.0.0'
+				} },
+				environmentFiles: [],
+				files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+				index: './src/index.html',
+				package: {
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					},
+					peerDependencies: {
+						'dep2': '2.0.0'
+					},
+					devDependencies: {
+						'dep3': '0.1.0'
+					}
+				},
+				tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
+			}, 'should have written expected contents');
+		},
+
+		async 'should ignore dev dependencies on deeper packages'() {
+			mockery.registerMock('dep1/package.json', {
+				dependencies: {
+					'dep4': 'next'
+				},
+				devDependencies: {
+					'dep5': '2.0.0'
+				}
+			});
+			mockery.registerMock('dep2/package.json', {
+				dependencies: {}
+			});
+			mockery.registerMock('dep3/package.json', {
+				dependencies: {}
+			});
+			mockery.registerMock('dep4/package.json', {
+				dependencies: {}
+			});
+			mockery.registerMock('dep5/package.json', {
+				dependencies: {}
+			});
+			readFileMap['package.json'] = JSON.stringify({
+				name: 'test-package',
+				dependencies: {
+					'dep1': '1.0.0'
+				},
+				peerDependencies: {
+					'dep2': '2.0.0'
+				},
+				devDependencies: {
+					'dep3': '0.1.0'
+				}
+			});
+
+			await emitProject(emitArgs);
+			assert.strictEqual(consoleLogStub.callCount, 2);
+			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				dependencies: {
+					development: {
+						'dep3': '0.1.0'
+					},
+					production: {
+						'dep1': '1.0.0',
+						'dep2': '2.0.0',
+						'dep4': 'next'
+					}
+				},
+				environmentFiles: [],
+				files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+				index: './src/index.html',
+				package: {
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					},
+					peerDependencies: {
+						'dep2': '2.0.0'
+					},
+					devDependencies: {
+						'dep3': '0.1.0'
+					}
+				},
+				tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
+			}, 'should have written expected contents');
+		},
+
+		async 'no package.json for dependency'() {
+			mockery.registerMock('dep1/package.json', {
+				dependencies: {
+					'dep6': 'next'
+				},
+				devDependencies: {
+					'dep5': '2.0.0'
+				}
+			});
+			mockery.registerMock('dep2/package.json', {
+				dependencies: {}
+			});
+			mockery.registerMock('dep3/package.json', {
+				dependencies: {}
+			});
+			mockery.registerMock('dep4/package.json', {
+				dependencies: {}
+			});
+			mockery.registerMock('dep5/package.json', {
+				dependencies: {}
+			});
+			readFileMap['package.json'] = JSON.stringify({
+				name: 'test-package',
+				dependencies: {
+					'dep1': '1.0.0'
+				},
+				peerDependencies: {
+					'dep2': '2.0.0'
+				},
+				devDependencies: {
+					'dep3': '0.1.0'
+				}
+			});
+
+			await emitProject(emitArgs);
+			assert.strictEqual(consoleLogStub.callCount, 2);
+			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				dependencies: {
+					development: {
+						'dep3': '0.1.0'
+					},
+					production: {
+						'dep1': '1.0.0',
+						'dep2': '2.0.0',
+						'dep6': 'next'
+					}
+				},
+				environmentFiles: [],
+				files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+				index: './src/index.html',
+				package: {
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					},
+					peerDependencies: {
+						'dep2': '2.0.0'
+					},
+					devDependencies: {
+						'dep3': '0.1.0'
+					}
+				},
+				tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
+			}, 'should have written expected contents');
+		},
+
+		async 'dual dependencies, first one wins'() {
+			mockery.registerMock('dep1/package.json', {
+				dependencies: {
+					'dep4': '1.0.0'
+				}
+			});
+			mockery.registerMock('dep2/package.json', {
+				dependencies: {
+					'dep4': '1.0.1'
+				}
+			});
+			mockery.registerMock('dep3/package.json', {
+				dependencies: {
+					'dep4': '2.0.0'
+				}
+			});
+			mockery.registerMock('dep4/package.json', {
+				dependencies: {}
+			});
+			readFileMap['package.json'] = JSON.stringify({
+				name: 'test-package',
+				dependencies: {
+					'dep1': '1.0.0'
+				},
+				peerDependencies: {
+					'dep2': '2.0.0'
+				},
+				devDependencies: {
+					'dep3': '0.1.0'
+				}
+			});
+
+			await emitProject(emitArgs);
+			assert.strictEqual(consoleLogStub.callCount, 2);
+			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				dependencies: {
+					development: {
+						'dep3': '0.1.0',
+						'dep4': '2.0.0'
+					},
+					production: {
+						'dep1': '1.0.0',
+						'dep2': '2.0.0',
+						'dep4': '1.0.0'
+					}
+				},
+				environmentFiles: [],
+				files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+				index: './src/index.html',
+				package: {
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					},
+					peerDependencies: {
+						'dep2': '2.0.0'
+					},
+					devDependencies: {
+						'dep3': '0.1.0'
+					}
+				},
+				tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
+			}, 'should have written expected contents');
+		},
+
+		async 'deep dependencies with duplicates'() {
+			mockery.registerMock('dep1/package.json', {
+				dependencies: {
+					'dep2': '1.0.0',
+					'dep3': '2.0.0',
+					'dep4': '1.0.0'
+				}
+			});
+			mockery.registerMock('dep2/package.json', {
+				dependencies: {
+					'dep3': '1.0.0',
+					'dep4': '1.0.0'
+				}
+			});
+			mockery.registerMock('dep3/package.json', {
+				dependencies: {
+					'dep4': '2.0.0'
+				}
+			});
+			mockery.registerMock('dep4/package.json', {
+				dependencies: {}
+			});
+			readFileMap['package.json'] = JSON.stringify({
+				name: 'test-package',
+				dependencies: {
+					'dep1': '1.0.0'
+				}
+			});
+
+			await emitProject(emitArgs);
+			assert.strictEqual(consoleLogStub.callCount, 2);
+			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				dependencies: {
+					development: { },
+					production: {
+						'dep1': '1.0.0',
+						'dep2': '1.0.0',
+						'dep3': '1.0.0',
+						'dep4': '2.0.0'
+					}
+				},
+				environmentFiles: [],
+				files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+				index: './src/index.html',
+				package: {
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					}
+				},
+				tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
+			}, 'should have written expected contents');
+		},
+
+		async 'sub peer dependencies'() {
+			mockery.registerMock('dep1/package.json', {
+				dependencies: {
+					'dep2': '1.0.0',
+					'dep4': '1.0.0'
+				},
+				peerDependencies: {
+					'dep3': '2.0.0'
+				}
+			});
+			mockery.registerMock('dep2/package.json', {
+				dependencies: {
+					'dep3': '1.0.0'
+				},
+				peerDependencies: {
+					'dep4': '1.0.0'
+				}
+			});
+			mockery.registerMock('dep3/package.json', {
+				dependencies: {
+					'dep4': '2.0.0'
+				}
+			});
+			mockery.registerMock('dep4/package.json', {
+				dependencies: {}
+			});
+			readFileMap['package.json'] = JSON.stringify({
+				name: 'test-package',
+				dependencies: {
+					'dep1': '1.0.0'
+				}
+			});
+
+			await emitProject(emitArgs);
+			assert.strictEqual(consoleLogStub.callCount, 2);
+			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				dependencies: {
+					development: { },
+					production: {
+						'dep1': '1.0.0',
+						'dep2': '1.0.0',
+						'dep3': '1.0.0',
+						'dep4': '1.0.0'
+					}
+				},
+				environmentFiles: [],
+				files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+				index: './src/index.html',
+				package: {
+					name: 'test-package',
+					dependencies: {
+						'dep1': '1.0.0'
+					}
+				},
+				tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
+			}, 'should have written expected contents');
+		}
 	},
 
 	async 'package.json does not contain a name'() {
@@ -313,6 +682,7 @@ registerSuite({
 			await emitProject(emitArgs);
 			assert.strictEqual(consoleLogStub.callCount, 2, 'should have only logged twice to console');
 			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				dependencies: { development: {}, production: {} },
 				environmentFiles: [],
 				files: [
 					{ name: 'src/index.ts', text: '', type: ProjectFileType.TypeScript },
@@ -344,7 +714,7 @@ registerSuite({
 		async 'content'() {
 			globMap['src/**/*.{ts,html}'] = [
 				'src/index.ts',
-				'src/index.html'
+				'./src/index.html'
 			];
 			readFileMap['tsconfig.json'] = JSON.stringify({
 				compilerOptions: { },
@@ -354,12 +724,13 @@ registerSuite({
 			await emitProject(emitArgs);
 			assert.strictEqual(consoleLogStub.callCount, 2, 'should have only logged twice to console');
 			assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+				dependencies: { development: {}, production: {} },
 				environmentFiles: [],
 				files: [
 					{ name: 'src/index.ts', text: '', type: ProjectFileType.TypeScript },
-					{ name: 'src/index.html', text: '', type: ProjectFileType.HTML }
+					{ name: './src/index.html', text: '', type: ProjectFileType.HTML }
 				],
-				index: 'src/index.html',
+				index: './src/index.html',
 				package: { name: 'test-package' },
 				tsconfig: {
 					compilerOptions: {},
@@ -424,7 +795,7 @@ registerSuite({
 			emitArgs.content = 'ts,html';
 			await emitProject(emitArgs);
 			assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged properly to the console');
-			assert.include(consoleLogStub.getCall(1).args[0], 'unable to find index "src/index.html" in project.');
+			assert.include(consoleLogStub.getCall(1).args[0], 'unable to find index "./src/index.html" in project.');
 		}
 	}
 });

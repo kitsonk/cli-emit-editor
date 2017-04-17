@@ -3,6 +3,26 @@ import { JsonSchemaForTheTypeScriptCompilersConfigurationFile as TsconfigJson } 
 import { JsonSchemaForTheTsLintConfigurationFiles as TslintJson } from './tslint.json';
 
 export interface ProjectBundle {
+
+	/**
+	 * The package dependencies for the project, either `production` or `development`
+	 */
+	dependencies: {
+		/**
+		 * A map of production dependencies, where the package name is the key and the value is the semver of the package
+		 */
+		production: {
+			[pkg: string]: string;
+		},
+
+		/**
+		 * A map of development dependencies, where the package name is the key and the value is the semver of the package
+		 */
+		development: {
+			[pkg: string]: string;
+		}
+	};
+
 	/**
 	 * Files that are part of the environment but are not exposed for editing
 	 *
@@ -53,5 +73,6 @@ export const enum ProjectFileType {
 	Markdown,
 	JSON,
 	XML,
+	SourceMap,
 	PlainText
 }

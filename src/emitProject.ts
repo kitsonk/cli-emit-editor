@@ -14,7 +14,7 @@ import { JsonSchemaForNpmPackageJsonFiles as PackageJson } from './interfaces/pa
  */
 const DOJO_EXCLUDE = /@dojo\/loader\/interfaces\.d\.ts$/;
 
-export let resolve = require.resolve;
+export let requireResolve = require.resolve;
 
 let verboseFlag = false;
 
@@ -106,6 +106,10 @@ async function setFile(filename: string, contents: string) {
  */
 async function createProject() {
 	const project: ProjectBundle = {
+		dependencies: {
+			production: {},
+			development: {}
+		},
 		environmentFiles: [],
 		files: [],
 		index: '',
@@ -172,6 +176,52 @@ function getProjectFileType(name: string): ProjectFileType {
 }
 
 /**
+ * Populates the `project.dependencies` with the recursively resolved dependencies for the package
+ * @param project The project bundle to populate
+ */
+function addDependencies(project: ProjectBundle) {
+
+	const packageSet = new Set();
+
+	function getDependencies (packages: { [pkg: string]: string; }): { [pkg: string]: string; } {
+		const dependencies: { [pkg: string]: string; } = {};
+		for (const packageName in packages) {
+			if (!packageSet.has(packageName)) {
+				packageSet.add(packageName);
+				log('  ' + bold.blue('resolving') + ` dependencies for package "${packageName}"`, true);
+				let packageJson: PackageJson;
+				try {
+					packageJson = require(join(packageName, 'package.json'));
+				}
+				catch (e) {
+					continue;
+				}
+				Object.assign(dependencies, packageJson.peerDependencies);
+				Object.assign(dependencies, packageJson.dependencies);
+				if (packageJson.peerDependencies && Object.keys(packageJson.peerDependencies).length) {
+					log('    ' + bold.blue('depends') + ` on peer packages "${Object.keys(packageJson.peerDependencies).join('", "')}"`, true);
+				}
+				if (packageJson.dependencies && Object.keys(packageJson.dependencies).length) {
+					log('    ' + bold.blue('depends') + ` on peer packages "${Object.keys(packageJson.dependencies).join('", "')}"`, true);
+				}
+			}
+		}
+		if (Object.keys(dependencies).length) {
+			Object.assign(dependencies, getDependencies(dependencies));
+		}
+		return dependencies;
+	}
+
+	Object.assign(project.dependencies.production, project.package.peerDependencies);
+	Object.assign(project.dependencies.production, project.package.dependencies);
+	Object.assign(project.dependencies.production, getDependencies(project.dependencies.production));
+
+	packageSet.clear();
+	Object.assign(project.dependencies.development, project.package.devDependencies);
+	Object.assign(project.dependencies.development, getDependencies(project.dependencies.development));
+}
+
+/**
  * An asnyc function which loads any of the `include` files that are specified in the `tsconfig.json` plus
  * other related static content files.
  * @param project The reference to the project bundle
@@ -205,17 +255,17 @@ async function addTypesFiles(project: ProjectBundle) {
 		const tasks = project.tsconfig.compilerOptions.types.map(async (packageName) => {
 			log('  ' + bold.blue('resolving') + ` types for package "${packageName}"`, true);
 			const packageJson: PackageJson = require(join(packageName, 'package.json'));
-			const packageJsonFilename = relative(cwd(), resolve(join(packageName, 'package.json')));
+			const packageJsonFilename = relative(cwd(), requireResolve(join(packageName, 'package.json')));
 			project.environmentFiles.push(createProjectFile(packageJsonFilename, JSON.stringify(packageJson), ProjectFileType.JSON));
 			if (packageJson.typings || packageJson.types) {
-				const filename = relative(cwd(), resolve(normalize(join(packageName, (packageJson.typings || packageJson.types)!))));
+				const filename = relative(cwd(), requireResolve(normalize(join(packageName, (packageJson.typings || packageJson.types)!))));
 				project.environmentFiles.push(createProjectFile(filename, await getFile(filename)));
 				log('  ' + bold.blue('adding') + ` type file "${filename}"`, true);
 			}
 			else {
 				log('  ' + bold.yellow('warn') + ` "${packageJsonFilename}" does not contain type information`);
 				try { /* try to find an index.d.ts file, since none specified in package.json */
-					const filename = relative(cwd(), resolve(normalize(join(packageName, 'index.d.ts'))));
+					const filename = relative(cwd(), requireResolve(normalize(join(packageName, 'index.d.ts'))));
 					project.environmentFiles.push(createProjectFile(filename, await getFile(filename)));
 					log('  ' + bold.blue('adding') + ` type file "${filename}"`, true);
 				}
@@ -244,7 +294,12 @@ async function addDefinitionFiles(project: ProjectBundle) {
 	return Promise.all(tasks);
 }
 
-function setProjectIndex(project: ProjectBundle, index = 'src/index.html') {
+/**
+ * Set the project index filename
+ * @param project The project that is the target
+ * @param index Supply an alternative index.html
+ */
+function setProjectIndex(project: ProjectBundle, index = './src/index.html') {
 	if (!project.files.find(({ name }) => name === index)) {
 		log('  ' + bold.red('error') + ` unable to find index "${index}" in project.`);
 	}
@@ -279,6 +334,7 @@ export default async function emitProject({ content, index, out, project: root, 
 		tasks.push(addProjectFiles(project, content));
 		await Promise.all(tasks);
 
+		addDependencies(project);
 		setProjectIndex(project, index);
 
 		/* write out project bundle file */
