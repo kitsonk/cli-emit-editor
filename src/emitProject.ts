@@ -126,6 +126,10 @@ async function createProject() {
 	Object.assign(project.package, JSON.parse(await getFile('package.json')));
 	log('  ' + bold.blue('reading') + ' "tsconfig.json"', true);
 	Object.assign(project.tsconfig, JSON.parse(await getFile('tsconfig.json')));
+	if (await exists('.dojorc')) {
+		log('  ' + bold.blue('reading') + ' ".dojorc"', true);
+		project.dojorc = JSON.parse(await getFile('.dojorc'));
+	}
 
 	return project;
 }

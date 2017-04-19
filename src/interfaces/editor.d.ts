@@ -1,6 +1,7 @@
 import { JsonSchemaForNpmPackageJsonFiles as PackageJson } from './package.json';
 import { JsonSchemaForTheTypeScriptCompilersConfigurationFile as TsconfigJson } from './tsconfig.json';
 import { JsonSchemaForTheTsLintConfigurationFiles as TslintJson } from './tslint.json';
+import { DojoRcJson } from './dojorc';
 
 export interface ProjectBundle {
 
@@ -22,6 +23,11 @@ export interface ProjectBundle {
 			[pkg: string]: string;
 		}
 	};
+
+	/**
+	 * The .dojorc for the project
+	 */
+	dojorc?: DojoRcJson;
 
 	/**
 	 * Files that are part of the environment but are not exposed for editing

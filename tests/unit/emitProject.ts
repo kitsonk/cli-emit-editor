@@ -115,7 +115,7 @@ registerSuite({
 			verbose: false
 		};
 
-		accessMap = {};
+		accessMap = { '.dojorc': false };
 		readFileMap = {
 			'package.json': JSON.stringify({ name: 'test-package' }),
 			'tsconfig.json': JSON.stringify({ compilerOptions: { }, include: [ 'src/**/*.ts' ] }),
@@ -160,6 +160,24 @@ registerSuite({
 		}, 'should have written expected contents');
 		assert.isTrue(accessMap['package.json'], 'should have checked to see if package.json exists');
 		assert.isTrue(accessMap['tsconfig.json'], 'should have checked to see if package.json exists');
+	},
+
+	async 'reads in .dojorc'() {
+		const dojorc = { 'build-webpack': { locale: 'en' } };
+		accessMap['.dojorc'] = true;
+		readFileMap['.dojorc'] = JSON.stringify(dojorc);
+
+		await emitProject(emitArgs);
+
+		assert.deepEqual(JSON.parse(writeFileStub.lastCall.args[1]), {
+			dependencies: { development: {}, production: {} },
+			dojorc,
+			environmentFiles: [],
+			files: [ { name: './src/index.html', text: '', type: ProjectFileType.HTML } ],
+			index: './src/index.html',
+			package: { name: 'test-package' },
+			tsconfig: { compilerOptions: { }, include: [ 'src/**/*.ts' ] }
+		}, 'should have written expected contents');
 	},
 
 	async 'adds appropriate lib files to project'() {
@@ -749,7 +767,7 @@ registerSuite({
 			async 'standard args'() {
 				emitArgs.verbose = true;
 				await emitProject(emitArgs);
-				assert.strictEqual(consoleLogStub.callCount, 7, 'should have logged propertly to console');
+				assert.strictEqual(consoleLogStub.callCount, 7, 'should have logged properly to console');
 			}
 		}
 	},
@@ -758,14 +776,14 @@ registerSuite({
 		async 'package.json missing'() {
 			accessMap['package.json'] = false;
 			await emitProject(emitArgs);
-			assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged propertly to console');
+			assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged properly to console');
 			assert.include(consoleLogStub.getCall(1).args[0], 'Error: Path "/var/projects/test-project" does not contain a "tsconfig.json" and "package.json".');
 		},
 
 		async 'tsconfig.json missing'() {
 			accessMap['tsconfig.json'] = false;
 			await emitProject(emitArgs);
-			assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged propertly to console');
+			assert.strictEqual(consoleLogStub.callCount, 3, 'should have logged properly to console');
 			assert.include(consoleLogStub.getCall(1).args[0], 'Error: Path "/var/projects/test-project" does not contain a "tsconfig.json" and "package.json".');
 		},
 
